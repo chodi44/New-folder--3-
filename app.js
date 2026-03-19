@@ -171,9 +171,16 @@ class App {
         // Initialize Html5QrcodeScanner
         this.html5QrcodeScanner = new Html5QrcodeScanner(
             "reader", 
-            { fps: 10, qrbox: { width: 250, height: 250 }, aspectRatio: 1.0 },
+            { 
+                fps: 10, 
+                qrbox: { width: 250, height: 250 }, 
+                aspectRatio: 1.0,
+                // Prefer back camera but allow selection
+                rememberLastUsedCamera: true
+            },
             /* verbose= */ false
         );
+
 
         this.html5QrcodeScanner.render(
             (decodedText, decodedResult) => this.onScanSuccess(decodedText, decodedResult),
