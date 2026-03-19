@@ -62,9 +62,13 @@ int SAMPLES = 30;              // Accuracy level
 const int WAKE_DISTANCE = 50;  // CM
 
 // 🚀 METAL DETECTION FIX: 🚀
-// Set this to LOW if your sensor stays HIGH normally.
-// Set this to HIGH if your sensor stays LOW normally.
+// For ST18-3004NA (NPN NO): 
+// - No Metal = HIGH
+// - Metal Detected = LOW
+// If it's "sticking" as metal, swap this to HIGH.
 bool METAL_TRIGGER_LEVEL = LOW; 
+
+const int STABILIZE_DELAY = 1500; // MS to wait for item to settle
 
 // ---------- CORE FUNCTIONS ----------
 
@@ -198,7 +202,8 @@ void loop() {
     showStatus("HELLO", "Waiting for waste...");
 
     if (digitalRead(IR_SENSOR) == LOW) {
-        delay(1000); 
+        showStatus("WAITING...", "Stabilizing");
+        delay(STABILIZE_DELAY); // Wait for item to stop moving
         float weight = scale.get_units(5);
         if (weight < 2) weight = 0; // Ignore tiny movements
 
