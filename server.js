@@ -27,8 +27,10 @@ app.post('/api/generate-qr', (req, res) => {
     const { type, weight } = req.body;
     
     // Calculate points based on weight and type
-    const multipliers = { plastic: 10, metal: 20, paper: 5, glass: 15 };
-    const points = Math.round((weight || 1.0) * (multipliers[type] || 10));
+    const multipliers = { metal: 20, wet: 5, dry: 10, plastic: 15, electronic: 30 };
+    const points = Math.round(((weight || 0.1) * 1000) * (multipliers[type] || 10) / 100); 
+    // ^ Normalized: roughly 10-30 points per item
+
     
     const token = uuidv4().substring(0, 8); // Short unique token
     

@@ -168,17 +168,33 @@ void executeFullCycle(String type, int limitPin, float weight) {
 String analyzeWaste() {
     int metalDetections = 0;
     int moistureSum = 0;
+    Serial.println("[Sensor] Starting analysis...");
+    
     for (int i = 0; i < METAL_SAMPLES; i++) {
-        if (digitalRead(METAL_SENSOR) == METAL_POLARITY) metalDetections++;
+        int rawVal = digitalRead(METAL_SENSOR);
+        if (rawVal == METAL_POLARITY) metalDetections++;
         moistureSum += analogRead(MOISTURE_SENSOR);
+        // Print raw values every 5 samples for debugging
+        if(i % 5 == 0) {
+           Serial.print("Sample "); Serial.print(i);
+           Serial.print(": Metal Raw="); Serial.print(rawVal);
+           Serial.print(", Moist="); Serial.println(analogRead(MOISTURE_SENSOR));
+        }
         delay(50);
     }
+
     int avgMoisture = moistureSum / METAL_SAMPLES;
-    bool isMetal = (metalDetections > (METAL_SAMPLES / 2));
+    // 🔥 HARDENED RULE: Require 80% of samples to be metal to count
+    bool isMetal = (metalDetections >= (METAL_SAMPLES * 0.8));
     bool isWet = (avgMoisture > MOISTURE_THRESHOLD);
-    if (isMetal) return "METAL";
-    if (isWet) return "WET";
-    return "DRY";
+
+    Serial.print("[Result] Metal Detections: "); Serial.print(metalDetections);
+    Serial.print("/"); Serial.print(METAL_SAMPLES);
+    Serial.print(" | Avg Moisture: "); Serial.println(avgMoisture);
+
+    if (isMetal) return "metal";
+    if (isWet) return "wet";
+    return "dry";
 }
 
 void setup() {
