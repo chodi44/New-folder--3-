@@ -100,6 +100,6 @@ app.get('/api/user/:uid', (req, res) => {
 
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`EcoReward Backend running at http://0.0.0.0:${PORT}`);
-    console.log(`- IoT Bin endpoint: http://10.247.192.208:${PORT}/api/generate-qr`);
-    console.log(`- Web App endpoint: http://10.247.192.208:${PORT}/api/claim-reward`);
+    console.log(`- IoT Bin endpoint: http://10.124.34.38:${PORT}/api/generate-qr`);
+    console.log(`- Web App endpoint: http://10.124.34.38:${PORT}/api/claim-reward`);
 });

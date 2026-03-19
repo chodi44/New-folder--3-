@@ -49,7 +49,7 @@ namespace QR {
 const char* ssid = "@@";      // <--- Change this to your WiFi Name
 const char* password = "81848448"; // <--- Change this to your WiFi Password
 // Change YOUR_COMPUTER_IP to 10.247.192.208
-const char* serverUrl = "http://10.247.192.208:3000/api/generate-qr";
+const char* serverUrl = "http://10.124.34.38:3000/api/generate-qr";
 
 U8G2_SH1106_128X64_NONAME_F_SW_I2C u8g2(U8G2_R0, 23, 22, U8X8_PIN_NONE);
 const int TRIG_PIN = 12, ECHO_PIN = 14;
@@ -102,8 +102,11 @@ void runMotorToLimit(int limitPin) {
 String sendDataToServer(String type, float weight) {
     if (WiFi.status() == WL_CONNECTED) {
         HTTPClient http;
-        http.begin(serverUrl);
+        // 🚀 LATEST STABLE PUBLIC TUNNEL 🚀
+        http.begin("https://wicked-terms-greet.loca.lt/api/generate-qr");
         http.addHeader("Content-Type", "application/json");
+        http.addHeader("Bypass-Tunnel-Reminder", "true"); // Bypasses the Localtunnel warning page
+
 
         JsonDocument doc; 
         String typeLower = type; typeLower.toLowerCase();
