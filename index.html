@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>EcoReward | IoT Smart Bin Scanner</title>
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@500;600;700&display=swap" rel="stylesheet" />
+    <!-- Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <!-- Styles -->
+    <link rel="stylesheet" href="./style.css" />
+    <!-- QR Scanner SDK -->
+    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="logo">
+                <i class="fa-solid fa-leaf text-primary"></i>
+                <span>EcoReward</span>
+            </div>
+            <div class="user-stats" id="userStats" style="display: none;">
+                <span class="pts-pill">
+                    <i class="fa-solid fa-star"></i> <span id="totalPointsDisplay">0</span> pts
+                </span>
+                <button id="logoutBtn" class="icon-btn" title="Logout"><i class="fa-solid fa-right-from-bracket"></i></button>
+            </div>
+        </header>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+            <!-- Auth Section -->
+            <section id="authSection" class="card fade-in">
+                <div class="card-header text-center">
+                    <h2>Welcome to EcoReward</h2>
+                    <p>Enter your User ID to start scanning bins and earning points.</p>
+                </div>
+                <form id="loginForm" class="auth-form">
+                    <div class="input-group">
+                        <i class="fa-solid fa-user"></i>
+                        <input type="text" id="uidInput" placeholder="Enter User ID (e.g., USER123)" required autocomplete="off" />
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-block">
+                        Continue <i class="fa-solid fa-arrow-right"></i>
+                    </button>
+                </form>
+            </section>
+
+            <!-- Scanner Section -->
+            <section id="scannerSection" class="card fade-in" style="display: none;">
+                <div class="scanner-header">
+                    <h2>Scan Smart Bin</h2>
+                    <p>Point your camera at the bin's QR code</p>
+                </div>
+                
+                <div class="scanner-container">
+                    <!-- Scanner Element -->
+                    <div id="reader"></div>
+                    <!-- Loading / Overlay -->
+                    <div id="scannerOverlay" class="scanner-overlay" style="display: none;">
+                        <div class="loader"></div>
+                        <p>Processing...</p>
+                    </div>
+                </div>
+                
+                <div class="scanner-actions">
+                    <div class="input-group manual-entry">
+                        <input type="text" id="manualTokenInput" placeholder="Or enter Token manually" autocomplete="off" />
+                        <button id="manualTokenBtn" class="btn btn-primary">Claim</button>
+                    </div>
+                    <button id="stopScanBtn" class="btn btn-outline btn-block">
+                        <i class="fa-solid fa-camera-rotate"></i> Change Camera
+                    </button>
+                </div>
+            </section>
+
+            <!-- Result Section -->
+            <section id="resultSection" class="card fade-in glass-card" style="display: none;">
+                <div id="resultContent" class="result-content text-center">
+                    <!-- Dynamic content injected here via JS -->
+                </div>
+                <div class="result-actions">
+                    <button id="scanAgainBtn" class="btn btn-primary btn-block">
+                        Scan Another Item
+                    </button>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Toast Notifications -->
+    <div id="toastContainer" class="toast-container"></div>
+
+    <script src="./app.js"></script>
+</body>
+</html>
