@@ -5,7 +5,8 @@
 
 class App {
     constructor() {
-        this.baseBackendUrl = 'http://localhost:3000/api/claim-reward';
+        // Use relative path for production (Render) or absolute for local testing
+        this.baseBackendUrl = window.location.origin + '/api/claim-reward';
         this.html5QrcodeScanner = null;
         this.currentUser = null;
         this.totalPoints = 0;

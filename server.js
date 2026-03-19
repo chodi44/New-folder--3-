@@ -8,11 +8,12 @@ const cors = require('cors');
 const { v4: uuidv4 } = require('uuid');
 
 const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 
 // Middleware
-app.use(cors()); // Allow web app to communicate
+app.use(cors());
 app.use(express.json());
+app.use(express.static('.')); // Serve the web app from the same server!
 
 // In-memory database (For demo purposes; use MongoDB or SQLite for production)
 let validTokens = [];
