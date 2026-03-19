@@ -26,13 +26,13 @@ let userPoints = {}; // { USER123: 150 }
 app.post('/api/generate-qr', (req, res) => {
     const { type, weight } = req.body;
     
-    // Calculate points based on weight and type
+    // Calculate points based on weight (grams/units) and type
     const multipliers = { metal: 20, wet: 5, dry: 10, plastic: 15, electronic: 30 };
-    const points = Math.round(((weight || 0.1) * 1000) * (multipliers[type] || 10) / 100); 
-    // ^ Normalized: roughly 10-30 points per item
-
+    // Points = (Weight * Multiplier) / 100
+    const points = Math.max(5, Math.round(((weight || 10) * (multipliers[type] || 10)) / 100)); 
     
-    const token = uuidv4().substring(0, 8); // Short unique token
+    const token = uuidv4().substring(0, 8).toUpperCase(); // Short uppercase unique token
+
     
     const newToken = {
         token: token,

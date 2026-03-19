@@ -7,12 +7,7 @@
 #include <HTTPClient.h>
 #include <ArduinoJson.h>
 
-/**
- * 🚀 ECO-REWARD: DEBUG VERSION 🚀
- * Now includes detailed Error Screens for WiFi and Server issues!
- */
-
-// --- STANDALONE QR ENCODER ---
+// --- STANDALONE QR ENCODER (STABLE) ---
 namespace QR {
     void drawModule(U8G2 &u8g2, uint8_t x, uint8_t y, uint8_t scale) {
         int offsetX = (128 - (29 * scale)) / 2;
@@ -45,11 +40,10 @@ namespace QR {
     }
 }
 
-// ---------- ⚠️ SETTINGS - UPDATE THESE! ⚠️ ----------
-const char* ssid = "@@";      // <--- Change this to your WiFi Name
-const char* password = "81848448"; // <--- Change this to your WiFi Password
-// Change YOUR_COMPUTER_IP to 10.247.192.208
-const char* serverUrl = "http://10.124.34.38:3000/api/generate-qr";
+// ---------- ⚠️ SETTINGS ----------
+const char* ssid = "@@";  
+const char* password = "81848448"; 
+const char* serverUrl = "https://wicked-terms-greet.loca.lt/api/generate-qr";
 
 U8G2_SH1106_128X64_NONAME_F_SW_I2C u8g2(U8G2_R0, 23, 22, U8X8_PIN_NONE);
 const int TRIG_PIN = 12, ECHO_PIN = 14;
@@ -62,13 +56,17 @@ const int SERVO_PIN = 13;
 HX711 scale;
 Servo myservo;
 
-// --- CALIBRATION ---
-int MOISTURE_THRESHOLD = 2500;
-int METAL_SAMPLES = 10;
-bool METAL_POLARITY = LOW;
-const int WAKE_DISTANCE = 50;
+// --- ADVANCED CALIBRATION ---
+int MOISTURE_THRESHOLD = 2200; // Lower = more sensitive to wet
+int SAMPLES = 30;              // Accuracy level
+const int WAKE_DISTANCE = 50;  // CM
 
-// ---------- FUNCTIONS ----------
+// 🚀 METAL DETECTION FIX: 🚀
+// Set this to LOW if your sensor stays HIGH normally.
+// Set this to HIGH if your sensor stays LOW normally.
+bool METAL_TRIGGER_LEVEL = LOW; 
+
+// ---------- CORE FUNCTIONS ----------
 
 void showStatus(String top, String bottom) {
   u8g2.clearBuffer();
@@ -77,17 +75,6 @@ void showStatus(String top, String bottom) {
   u8g2.setFont(u8g2_font_6x10_tf);
   u8g2.drawStr(0, 50, bottom.c_str());
   u8g2.sendBuffer();
-}
-
-void showBigToken(String token) {
-    u8g2.clearBuffer();
-    u8g2.setFont(u8g2_font_ncenB10_tr);
-    u8g2.drawStr(0, 15, "MANUAL TOKEN:");
-    u8g2.drawFrame(0, 25, 128, 38);
-    u8g2.setFont(u8g2_font_ncenB18_tr);
-    int width = u8g2.getStrWidth(token.c_str());
-    u8g2.drawStr((128-width)/2, 53, token.c_str());
-    u8g2.sendBuffer();
 }
 
 void runMotorToLimit(int limitPin) {
@@ -99,154 +86,131 @@ void runMotorToLimit(int limitPin) {
   delay(500);
 }
 
-String sendDataToServer(String type, float weight) {
-    if (WiFi.status() == WL_CONNECTED) {
-        HTTPClient http;
-        // 🚀 LATEST STABLE PUBLIC TUNNEL 🚀
-        http.begin("https://wicked-terms-greet.loca.lt/api/generate-qr");
-        http.addHeader("Content-Type", "application/json");
-        http.addHeader("Bypass-Tunnel-Reminder", "true"); // Bypasses the Localtunnel warning page
-
-
-        JsonDocument doc; 
-        String typeLower = type; typeLower.toLowerCase();
-        doc["type"] = typeLower;
-        doc["weight"] = weight / 1000.0;
-        
-        String requestBody;
-        serializeJson(doc, requestBody);
-        
-        Serial.print("[HTTP] POST to "); Serial.println(serverUrl);
-        int httpResponseCode = http.POST(requestBody);
-        String token = "ERROR";
-
-        if (httpResponseCode > 0) {
-            String response = http.getString();
-            JsonDocument resDoc;
-            deserializeJson(resDoc, response);
-            token = resDoc["token"].as<String>();
-            Serial.print("[HTTP] Success! Token: "); Serial.println(token);
-        } else {
-            Serial.print("[HTTP] ERROR: "); Serial.println(httpResponseCode);
-            showStatus("SERVER ERR", "Code: " + String(httpResponseCode));
-            delay(3000);
-        }
-        http.end();
-        return token;
-    } else {
-        showStatus("WIFI LOST", "Reconnecting...");
-        return "ERROR";
-    }
-}
-
-void executeFullCycle(String type, int limitPin, float weight) {
-  String token = sendDataToServer(type, weight);
-  if (token == "ERROR") return;
-
-  showStatus("SORTING", "Processing...");
-  runMotorToLimit(limitPin);
-  myservo.write(90); delay(3000); myservo.write(0);
-
-  u8g2.clearBuffer();
-  u8g2.setFont(u8g2_font_ncenB14_tr);
-  u8g2.drawStr(10, 30, "DONE!");
-  u8g2.sendBuffer();
-  delay(2000);
-
-  QR::drawRealQR(u8g2, token);
-  delay(8000); 
-
-  showBigToken(token);
-  delay(6000);
-
-  if (limitPin != LIMIT_DRY) {
-    showStatus("RESETTING", "Going Home");
-    runMotorToLimit(LIMIT_DRY);
-  }
-}
-
 String analyzeWaste() {
-    int metalDetections = 0;
-    int moistureSum = 0;
-    Serial.println("[Sensor] Starting analysis...");
+    int metalHits = 0;
+    long moistSum = 0;
     
-    for (int i = 0; i < METAL_SAMPLES; i++) {
-        int rawVal = digitalRead(METAL_SENSOR);
-        if (rawVal == METAL_POLARITY) metalDetections++;
-        moistureSum += analogRead(MOISTURE_SENSOR);
-        // Print raw values every 5 samples for debugging
-        if(i % 5 == 0) {
-           Serial.print("Sample "); Serial.print(i);
-           Serial.print(": Metal Raw="); Serial.print(rawVal);
-           Serial.print(", Moist="); Serial.println(analogRead(MOISTURE_SENSOR));
-        }
-        delay(50);
+    Serial.println("[Analyze] Running 30 samples...");
+    
+    for (int i = 0; i < SAMPLES; i++) {
+        int rawMetal = digitalRead(METAL_SENSOR);
+        if (rawMetal == METAL_TRIGGER_LEVEL) metalHits++;
+        moistSum += analogRead(MOISTURE_SENSOR);
+        delay(30); 
     }
 
-    int avgMoisture = moistureSum / METAL_SAMPLES;
-    // 🔥 HARDENED RULE: Require 80% of samples to be metal to count
-    bool isMetal = (metalDetections >= (METAL_SAMPLES * 0.8));
-    bool isWet = (avgMoisture > MOISTURE_THRESHOLD);
+    int avgMoist = moistSum / SAMPLES;
+    // Require 85% majority for metal (Very Strict!)
+    bool isMetal = (metalHits >= (SAMPLES * 0.85));
+    bool isWet = (avgMoist > MOISTURE_THRESHOLD);
 
-    Serial.print("[Result] Metal Detections: "); Serial.print(metalDetections);
-    Serial.print("/"); Serial.print(METAL_SAMPLES);
-    Serial.print(" | Avg Moisture: "); Serial.println(avgMoisture);
+    Serial.print("--- RESULTS ---");
+    Serial.print(" Metal Score: "); Serial.print(metalHits); Serial.print("/"); Serial.println(SAMPLES);
+    Serial.print(" Avg Moisture: "); Serial.println(avgMoist);
 
     if (isMetal) return "metal";
     if (isWet) return "wet";
     return "dry";
 }
 
+String getQRCodeFromServer(String type, float weight) {
+    if (WiFi.status() != WL_CONNECTED) return "ERROR";
+    
+    HTTPClient http;
+    http.begin(serverUrl);
+    http.addHeader("Content-Type", "application/json");
+    http.addHeader("Bypass-Tunnel-Reminder", "true");
+
+    JsonDocument doc;
+    doc["type"] = type;
+    doc["weight"] = weight; // Already in grams/units from your current scale setting
+    
+    String body;
+    serializeJson(doc, body);
+    
+    int code = http.POST(body);
+    String token = "ERROR";
+    if (code > 0) {
+        String res = http.getString();
+        JsonDocument resDoc;
+        deserializeJson(resDoc, res);
+        token = resDoc["token"].as<String>();
+    }
+    http.end();
+    return token;
+}
+
+void executeCycle(String type, int limitPin, float weight) {
+    showStatus("SORTING...", type);
+    runMotorToLimit(limitPin);
+    myservo.write(90); delay(3000); myservo.write(0);
+
+    showStatus("REWARD", "Finalizing...");
+    String token = getQRCodeFromServer(type, weight);
+    
+    if (token != "ERROR") {
+        QR::drawRealQR(u8g2, token);
+        delay(12000); // 12 Seconds to scan
+    } else {
+        showStatus("OFFLINE", "Saving locally...");
+        delay(3000);
+    }
+
+    if (limitPin != LIMIT_DRY) {
+        showStatus("RESETTING", "Home");
+        runMotorToLimit(LIMIT_DRY);
+    }
+}
+
 void setup() {
   Serial.begin(115200);
   u8g2.begin();
   
-  showStatus("WiFi Setup", "Connecting...");
   WiFi.begin(ssid, password);
+  showStatus("WIFI", "Connecting...");
   
-  int counter = 0;
-  while (WiFi.status() != WL_CONNECTED && counter < 20) {
-    delay(500);
-    Serial.print(".");
-    counter++;
+  int timeout = 0;
+  while (WiFi.status() != WL_CONNECTED && timeout < 20) {
+    delay(500); timeout++; Serial.print(".");
   }
-
-  if (WiFi.status() == WL_CONNECTED) {
-    showStatus("CONNECTED!", WiFi.localIP().toString());
-    Serial.print("\nIP: "); Serial.println(WiFi.localIP());
-  } else {
-    showStatus("WIFI ERROR", "Check SSID/Pass");
-    Serial.println("\nWiFi Failed.");
-  }
-  delay(3000);
 
   pinMode(TRIG_PIN, OUTPUT); pinMode(ECHO_PIN, INPUT);
   pinMode(IR_SENSOR, INPUT); pinMode(METAL_SENSOR, INPUT); pinMode(MOISTURE_SENSOR, INPUT);
   pinMode(IN1, OUTPUT); pinMode(IN2, OUTPUT); pinMode(ENA, OUTPUT);
   pinMode(LIMIT_DRY, INPUT_PULLUP); pinMode(LIMIT_WET, INPUT_PULLUP); pinMode(LIMIT_METAL, INPUT_PULLUP);
+  
   myservo.attach(SERVO_PIN); myservo.write(0);
   scale.begin(LOADCELL_DOUT_PIN, LOADCELL_SCK_PIN);
   scale.set_scale(420.0); scale.tare();
+  
+  showStatus("SUCCESS!", "Ready to scan");
+  Serial.println("\nSystem Ready.");
 }
 
 void loop() {
   digitalWrite(TRIG_PIN, LOW); delayMicroseconds(2);
   digitalWrite(TRIG_PIN, HIGH); delayMicroseconds(10);
   digitalWrite(TRIG_PIN, LOW);
-  long duration = pulseIn(ECHO_PIN, HIGH, 30000);
-  long distance = (duration == 0) ? 999 : duration * 0.034 / 2;
+  long dur = pulseIn(ECHO_PIN, HIGH, 30000);
+  long dist = (dur == 0) ? 999 : dur * 0.034 / 2;
 
-  if (distance < WAKE_DISTANCE && distance > 1) {
-    showStatus("READY", "Drop waste in");
+  if (dist < WAKE_DISTANCE && dist > 1) {
+    showStatus("HELLO", "Waiting for waste...");
+
     if (digitalRead(IR_SENSOR) == LOW) {
-        delay(1000);
+        delay(1000); 
         float weight = scale.get_units(5);
-        showStatus("ANALYZING...", "Please Wait");
-        String finalType = analyzeWaste();
-        if (finalType == "METAL") executeFullCycle("METAL", LIMIT_METAL, weight);
-        else if (finalType == "WET") executeFullCycle("WET", LIMIT_WET, weight);
-        else executeFullCycle("DRY", LIMIT_DRY, weight);
+        if (weight < 2) weight = 0; // Ignore tiny movements
+
+        showStatus("ANALYZING...", "Stay still");
+        String type = analyzeWaste();
+        
+        if (type == "metal") executeCycle("metal", LIMIT_METAL, weight);
+        else if (type == "wet") executeCycle("wet", LIMIT_WET, weight);
+        else executeCycle("dry", LIMIT_DRY, weight);
     }
-  } else { u8g2.clearDisplay(); }
-  delay(500);
+  } else {
+    u8g2.clearDisplay();
+  }
+  delay(400);
 }
